@@ -1,3 +1,4 @@
+from tensorflow.keras.datasets import mnist
 import tarfile
 import os
 import hickle as hkl
@@ -6,11 +7,11 @@ import pandas as pd
 import skimage
 import skimage.io
 import skimage.transform
-from tensorflow.examples.tutorials.mnist import input_data
 
-mnist = input_data.read_data_sets('MNIST_data')
+# Load MNIST dataset
+(train_images, train_labels), (test_images, test_labels) = mnist.load_data()
 
-BST_PATH = 'BSR_bsds500.tgz'
+BST_PATH = '/content/drive/MyDrive/BSR_bsds500.tgz'
 
 rand = np.random.RandomState(42)
 
@@ -20,8 +21,7 @@ for name in f.getnames():
     if name.startswith('BSR/BSDS500/data/images/train/'):
         train_files.append(name)
 
-print
-'Loading BSR training images'
+print('Loading BSR training images')
 background_data = []
 for name in train_files:
     try:
@@ -51,9 +51,10 @@ def create_mnistm(X):
     X_ = np.zeros([X.shape[0], 28, 28, 3], np.uint8)
     for i in range(X.shape[0]):
         if i % 1000 == 0:
-            print
-            i
-        bg_img = rand.choice(background_data)
+            print(i)
+        bg_index = rand.choice(len(background_data))  # Randomly select an index
+        bg_img = background_data[bg_index]           # Access the background image using the index
+
         d = mnist_to_img(X[i])
         d = compose_image(d, bg_img)
         X_[i] = d
@@ -63,19 +64,15 @@ def savefile(history,path):
 #    if not os.path.exists(path):
 #        os.makedirs(path)
     hkl.dump(history,path)
-path='data\\'    
-print
-'Building train set...'
-train = create_mnistm(mnist.train.images)
-print
-'Building test set...'
-test = create_mnistm(mnist.test.images)
-print
-'Building validation set...'
-valid = create_mnistm(mnist.validation.images)
+path='/content/drive/MyDrive'    
+print('Building train set...')
+train = create_mnistm(train_images)
+print('Building test set...')
+test = create_mnistm(test_images)
+print('Building validation set...')
+valid = create_mnistm(test_images[:5000])  # Assuming you want to use a subset of test images for validation
 
 mnist_data={'train':train,'test':test,'valid':valid}
-# Save dataset as pickle
+# Save dataset as hickle file
 path = os.path.join(str(path), 'mnistm_data.hkl')
-savefile( mnist_data,path )
-
+savefile(mnist_data, path)
