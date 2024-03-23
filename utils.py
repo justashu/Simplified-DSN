@@ -1,18 +1,11 @@
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-from tensorflow.python.framework import ops
-from tensorflow.examples.tutorials.mnist import input_data
-
 import numpy as np
-import hickle as hkl
+from tensorflow.keras.datasets import mnist
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-import urllib
 import os
-import tarfile
-import skimage
-import skimage.io
-import skimage.transform
+from sklearn.utils import shuffle
+
 
 def compose_image(digit, background):
     """Difference-blend a digit and a random patch from a background image."""
@@ -32,64 +25,47 @@ def mnist_to_img(x):
 def create_mnistm(X):
     """
     Give an array of MNIST digits, blend random background patches to
-    build the MNIST-M dataset as described in
-    http://jmlr.org/papers/volume17/15-239/15-239.pdf
+    build the MNIST-M dataset.
     """
     X_ = np.zeros([X.shape[0], 28, 28, 3], np.uint8)
     for i in range(X.shape[0]):
-        bg_img = rand.choice(background_data)
+        bg_img = np.random.choice(background_data)
         d = mnist_to_img(X[i])
         d = compose_image(d, bg_img)
         X_[i] = d
     return X_
 
 def imshow_grid(images, shape=[2, 8]):
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    fig = plt.figure()
-    grid = ImageGrid(fig, 111, nrows_ncols=shape, axes_pad=0.05)
-    size = shape[0] * shape[1]
-    for i in range(size):
-        grid[i].axis('off')
-        grid[i].imshow(images[i])
+    fig, axes = plt.subplots(shape[0], shape[1], figsize=(12, 4))
+    for i, ax in enumerate(axes.flat):
+        ax.imshow(images[i])
+        ax.axis('off')
     plt.show()
 
-
 def difference_loss(private_samples, shared_samples, weight=0.05, name=''):
-  private_samples -= tf.reduce_mean(private_samples, 0)
-  shared_samples -= tf.reduce_mean(shared_samples, 0)
-  private_samples = tf.nn.l2_normalize(private_samples, 1)
-  shared_samples = tf.nn.l2_normalize(shared_samples, 1)
-  correlation_matrix = tf.matmul( private_samples, shared_samples, transpose_a=True)
-  cost = tf.reduce_mean(tf.square(correlation_matrix)) * weight
-  cost = tf.where(cost > 0, cost, 0, name='value')
-  #tf.summary.scalar('losses/Difference Loss {}'.format(name),cost)
-  assert_op = tf.Assert(tf.is_finite(cost), [cost])
-  with tf.control_dependencies([assert_op]):
-     tf.losses.add_loss(cost)
-  return cost
-
+    private_samples -= tf.reduce_mean(private_samples, 0)
+    shared_samples -= tf.reduce_mean(shared_samples, 0)
+    private_samples = tf.keras.backend.l2_normalize(private_samples, 1)
+    shared_samples = tf.keras.backend.l2_normalize(shared_samples, 1)
+    correlation_matrix = tf.matmul(private_samples, shared_samples, transpose_a=True)
+    cost = tf.reduce_mean(tf.square(correlation_matrix)) * weight
+    cost = tf.where(cost > 0, cost, 0, name='value')
+    assert_op = tf.Assert(tf.is_finite(cost), [cost])
+    with tf.control_dependencies([assert_op]):
+        tf.losses.add_loss(cost)
+    return cost
 
 def concat_operation(shared_repr, private_repr):
     return shared_repr + private_repr
 
-
-class FlipGradientBuilder(object):
-    def __init__(self):
-        self.num_calls = 0
-    def __call__(self, x, l=1.0):
-        grad_name = "FlipGradient%d" % self.num_calls
-        @ops.RegisterGradient(grad_name)
-        def _flip_gradients(op, grad):
-            #return [tf.neg(grad) * l]
-            return [tf.negative(grad) * l]
-        g = tf.get_default_graph()
-        with g.gradient_override_map({"Identity": grad_name}):
-            y = tf.identity(x)
-        self.num_calls += 1
-        return y
+@tf.custom_gradient
+def flip_gradient(x, l=1.0):
+    y = tf.identity(x)
+    def grad(dy):
+        return tf.negative(dy) * l, None
+    return y, grad
 
 def shuffle_aligned_list(data):
-    """Shuffle arrays in a list by shuffling each array identically."""
     num = data[0].shape[0]
     p = np.random.permutation(num)
     return [d[p] for d in data]
@@ -103,7 +79,7 @@ def batch_generator(data, batch_size, shuffle=True):
     same slice of each input.
     """
     if shuffle:
-        data = shuffle_aligned_list(data)
+        data = shuffle(data)
 
     batch_count = 0
     while True:
@@ -111,13 +87,12 @@ def batch_generator(data, batch_size, shuffle=True):
             batch_count = 0
 
             if shuffle:
-                data = shuffle_aligned_list(data)
+                data = shuffle(data)
 
         start = batch_count * batch_size
         end = start + batch_size
         batch_count += 1
         yield [d[start:end] for d in data]
-
 
 def plot_embedding(X, y, d, title=None):
     """Plot an embedding X with the class label y colored by the domain d."""
@@ -138,12 +113,10 @@ def plot_embedding(X, y, d, title=None):
         plt.title(title)
 
 def imshow_grid(images, cmap=None,shape=[2, 8],title=''):
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    fig = plt.figure()
-    grid = ImageGrid(fig, 111, nrows_ncols=shape, axes_pad=0.05)
-    size = shape[0] * shape[1]
-    for i in range(size):
-        grid[i].axis('off')
-        grid[i].imshow(images[i],cmap=cmap)
-    fig.suptitle(title,fontsize=16)
+    fig, axes = plt.subplots(shape[0], shape[1], figsize=(12, 4))
+    for i, ax in enumerate(axes.flat):
+        ax.imshow(images[i], cmap=cmap)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    plt.suptitle(title, fontsize=16)
     plt.show()

@@ -12,11 +12,12 @@ class FlipGradientBuilder(object):
 
     def __call__(self, x, l=1.0):
         grad_name = "FlipGradient%d" % self.num_calls
-        @ops.RegisterGradient(grad_name)
+        
+        @tf.RegisterGradient(grad_name)
         def _flip_gradients(op, grad):
             return [tf.negative(grad) * l]
         
-        g = tf.get_default_graph()
+        g = tf.compat.v1.get_default_graph()
         with g.gradient_override_map({"Identity": grad_name}):
             y = tf.identity(x)
             
@@ -24,3 +25,4 @@ class FlipGradientBuilder(object):
         return y
     
 flip_gradient = FlipGradientBuilder()
+

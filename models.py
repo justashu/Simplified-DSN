@@ -1,97 +1,58 @@
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
-from tensorflow.python.framework import ops
-from tensorflow.examples.tutorials.mnist import input_data
+from tensorflow.keras import layers
 
-import numpy as np
-import pickle as pkl
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import urllib
-import os
-import tarfile
-import skimage
-import skimage.io
-import skimage.transform
-
-
-
+# Shared Encoder
 def shared_encoder(x, name='feat_ext', reuse=False):
-    with tf.variable_scope(name) as scope:
+    with tf.name_scope(name) as scope:
         if reuse:
-        
             scope.reuse_variables()
-        with slim.arg_scope(
-              [slim.conv2d, slim.fully_connected],
-              weights_regularizer=slim.l2_regularizer(1e-6),
-              activation_fn=tf.nn.relu,normalizer_fn=slim.batch_norm):
-            net = slim.conv2d(x, 32, [5, 5],scope = 'conv1_shared_encoder')
-            net = slim.max_pool2d(net, [2, 2], scope='pool1_shared_encoder')
-            net = slim.conv2d(net, 64, [5, 5], scope='conv2_shared_encoder')
-            net = slim.max_pool2d(net, [2, 2], scope='pool2_shared_encoder')
-            net = slim.flatten(net, scope='flat_shared_encoder')
-            net = slim.flatten(net)
-            net = slim.fully_connected(net, 100, scope='shared_fc1')
+        with tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv1_shared_encoder'):
+            net = layers.MaxPooling2D(pool_size=(2, 2), name='pool1_shared_encoder')(net)
+            net = layers.Conv2D(64, kernel_size=(5, 5), activation='relu', padding='same', name='conv2_shared_encoder')(net)
+            net = layers.MaxPooling2D(pool_size=(2, 2), name='pool2_shared_encoder')(net)
+            net = layers.Flatten(name='flat_shared_encoder')(net)
+            net = layers.Dense(100, activation='relu', name='shared_fc1')(net)
     return net
 
-#Private Target Encoder
+# Private Target Encoder
 def private_target_encoder(x, name='priviate_target_encoder', reuse=False):
-    with tf.variable_scope(name) as scope:
+    with tf.name_scope(name) as scope:
         if reuse:
             scope.reuse_variables()
-        with slim.arg_scope(
-              [slim.conv2d, slim.fully_connected],
-              weights_regularizer=slim.l2_regularizer(1e-6),
-              activation_fn=tf.nn.relu,normalizer_fn=slim.batch_norm):
-            net = slim.conv2d(x, 32, [5, 5], scope='conv1')
-            net = slim.max_pool2d(net, [2, 2],2, scope='pool1')
-            net = slim.conv2d(net, 64, [5, 5], scope='conv2')
-            net = slim.max_pool2d(net, [2, 2],2, scope='pool2')
-            net = slim.flatten(net)
-            net = slim.fully_connected(net, 100, scope='private_target_fc1')
+        with tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv1'):
+            net = layers.MaxPooling2D(pool_size=(2, 2), strides=2, name='pool1')(net)
+            net = layers.Conv2D(64, kernel_size=(5, 5), activation='relu', padding='same', name='conv2')(net)
+            net = layers.MaxPooling2D(pool_size=(2, 2), strides=2, name='pool2')(net)
+            net = layers.Flatten()(net)
+            net = layers.Dense(100, activation='relu', name='private_target_fc1')(net)
     return net
 
-#Private Source Encoder
+# Private Source Encoder
 def private_source_encoder(x, name='priviate_source_encoder', reuse=False):
-    with tf.variable_scope(name) as scope:
+    with tf.name_scope(name) as scope:
         if reuse:
             scope.reuse_variables()
-        with slim.arg_scope(
-              [slim.conv2d, slim.fully_connected],
-              weights_regularizer=slim.l2_regularizer(1e-6),
-              activation_fn=tf.nn.relu,normalizer_fn=slim.batch_norm):
-            net = slim.conv2d(x, 32, [5, 5], scope='conv1')
-            net = slim.max_pool2d(net, [2, 2], scope='pool1')
-            net = slim.conv2d(net, 64, [5, 5], scope='conv2')
-            net = slim.max_pool2d(net, [2, 2], scope='pool2')
-            net = slim.flatten(net)
-            net = slim.fully_connected(net, 100, scope='private_source_fc1')
+        with tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv1'):
+            net = layers.MaxPooling2D(pool_size=(2, 2), name='pool1')(net)
+            net = layers.Conv2D(64, kernel_size=(5, 5), activation='relu', padding='same', name='conv2')(net)
+            net = layers.MaxPooling2D(pool_size=(2, 2), name='pool2')(net)
+            net = layers.Flatten()(net)
+            net = layers.Dense(100, activation='relu', name='private_source_fc1')(net)
     return net
 
-def shared_decoder(feat,height,width,channels,reuse=False, name='shared_decoder'):
-    with tf.variable_scope(name) as scope:
+# Shared Decoder
+def shared_decoder(feat, height, width, channels, reuse=False, name='shared_decoder'):
+    with tf.name_scope(name) as scope:
         if reuse:
             scope.reuse_variables()
-        with slim.arg_scope(
-              [slim.conv2d, slim.fully_connected],
-              weights_regularizer=slim.l2_regularizer(1e-6),
-              activation_fn=tf.nn.relu,normalizer_fn=slim.batch_norm):
-            net = slim.fully_connected(feat, 600, scope='fc1_decoder')
-            net = tf.reshape(net, [-1, 10, 10, 6])
-        
-            net = slim.conv2d(net, 32, [5, 5], scope='conv1_1_decoder')
-        
-            net = tf.image.resize_nearest_neighbor(net, (16, 16))
-        
-            net = slim.conv2d(net, 32, [5, 5], scope='conv2_1_decoder')
-        
-            net = tf.image.resize_nearest_neighbor(net, (32, 32))
-        
-            net = slim.conv2d(net, 32, [5, 5], scope='conv3_2_decoder')
-        
+        with tf.keras.layers.Dense(600, activation='relu', name='fc1_decoder'):
+            net = tf.reshape(feat, [-1, 10, 10, 6])
+            net = tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv1_1_decoder')(net)
+            net = tf.image.resize(net, (16, 16), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+            net = tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv2_1_decoder')(net)
+            net = tf.image.resize(net, (32, 32), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+            net = tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv3_2_decoder')(net)
             output_size = [height, width]
-            net = tf.image.resize_nearest_neighbor(net, output_size)
-        
-            with slim.arg_scope([slim.conv2d], kernel_size=[3, 3]):
-              net = slim.conv2d(net, channels, activation_fn=None, scope='conv4_1_decoder')
+            net = tf.image.resize(net, output_size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+            net = tf.keras.layers.Conv2D(channels, kernel_size=(3, 3), activation=None, padding='same', name='conv4_1_decoder')(net)
     return net
