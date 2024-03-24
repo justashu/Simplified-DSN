@@ -39,6 +39,7 @@ def private_target_encoder(x, name='private_target_encoder'):
         net = fc1(net)
     return net
 
+
 def private_source_encoder(x, name='private_source_encoder'):
     with tf.name_scope(name) as scope:
         # Define layers
