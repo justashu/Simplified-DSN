@@ -71,28 +71,36 @@ def shuffle_aligned_list(data):
     return [d[p] for d in data]
 
 
+import numpy as np
+
 def batch_generator(data, batch_size, shuffle=True):
-    """Generate batches of data.
+    """
+    Generate batches of data.
     
     Given a list of array-like objects, generate batches of a given
     size by yielding a list of array-like objects corresponding to the
     same slice of each input.
+    
+    Args:
+        data: A list of array-like objects (e.g., features, labels)
+        batch_size: Number of samples per batch
+        shuffle: Whether to shuffle the data before creating batches
+        
+    Yields:
+        A list of array-like objects corresponding to a batch of data
     """
-    if shuffle:
-        data = shuffle(data)
-
-    batch_count = 0
+    data_size = len(data[0])
+    indices = np.arange(data_size)
+    
     while True:
-        if batch_count * batch_size + batch_size >= len(data[0]):
-            batch_count = 0
+        if shuffle:
+            np.random.shuffle(indices)
 
-            if shuffle:
-                data = shuffle(data)
+        for start_idx in range(0, data_size, batch_size):
+            end_idx = min(start_idx + batch_size, data_size)
+            batch_indices = indices[start_idx:end_idx]
+            yield [d[batch_indices] for d in data]
 
-        start = batch_count * batch_size
-        end = start + batch_size
-        batch_count += 1
-        yield [d[start:end] for d in data]
 
 def plot_embedding(X, y, d, title=None):
     """Plot an embedding X with the class label y colored by the domain d."""
