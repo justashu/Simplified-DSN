@@ -65,11 +65,11 @@ def shared_decoder(feat, height, width, channels, name='shared_decoder'):
         fc1 = tf.keras.layers.Dense(600, activation='relu', name='fc1_decoder')
         reshape = tf.keras.layers.Reshape((10, 10, 6))
         conv1 = tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv1_1_decoder')
-        resize1 = tf.keras.layers.Lambda(lambda x: tf.image.resize_nearest_neighbor(x, (16, 16)))
+        resize1 = tf.keras.layers.Lambda(lambda x: tf.image.resize(x, (16, 16), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR))
         conv2 = tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv2_1_decoder')
-        resize2 = tf.keras.layers.Lambda(lambda x: tf.image.resize_nearest_neighbor(x, (32, 32)))
+        resize2 = tf.keras.layers.Lambda(lambda x: tf.image.resize(x, (32, 32), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR))
         conv3 = tf.keras.layers.Conv2D(32, kernel_size=(5, 5), activation='relu', padding='same', name='conv3_2_decoder')
-        resize3 = tf.keras.layers.Lambda(lambda x: tf.image.resize_nearest_neighbor(x, (height, width)))
+        resize3 = tf.keras.layers.Lambda(lambda x: tf.image.resize(x, (height, width), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR))
         conv4 = tf.keras.layers.Conv2D(channels, kernel_size=(3, 3), activation=None, padding='same', name='conv4_1_decoder')
         
         # Apply layers
@@ -83,6 +83,7 @@ def shared_decoder(feat, height, width, channels, name='shared_decoder'):
         net = resize3(net)
         net = conv4(net)
     return net
+
 
 
 
