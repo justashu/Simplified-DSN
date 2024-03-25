@@ -18,6 +18,12 @@ def shared_encoder(x, name='shared_encoder'):
         net = pool2(net)
         net = flatten(net)
         net = fc1(net)
+
+     # Set layers trainable
+        conv1.trainable = True
+        conv2.trainable = True
+        fc1.trainable = True
+        
     return net
 
 def private_target_encoder(x, name='private_target_encoder'):
@@ -37,6 +43,11 @@ def private_target_encoder(x, name='private_target_encoder'):
         net = pool2(net)
         net = flatten(net)
         net = fc1(net)
+        
+         # Set layers trainable
+        conv1.trainable = True
+        conv2.trainable = True
+        fc1.trainable = True
     return net
 
 
@@ -57,6 +68,11 @@ def private_source_encoder(x, name='private_source_encoder'):
         net = pool2(net)
         net = flatten(net)
         net = fc1(net)
+
+     # Set layers trainable
+        conv1.trainable = True
+        conv2.trainable = True
+        fc1.trainable = True
     return net
 
 def shared_decoder(feat, height, width, channels, name='shared_decoder'):
@@ -82,6 +98,13 @@ def shared_decoder(feat, height, width, channels, name='shared_decoder'):
         net = conv3(net)
         net = resize3(net)
         net = conv4(net)
+
+     # Set layers trainable
+        fc1.trainable = True
+        conv1.trainable = True
+        conv2.trainable = True
+        conv3.trainable = True
+        conv4.trainable = True
     return net
 
 
