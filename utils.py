@@ -72,7 +72,6 @@ def shuffle_aligned_list(data):
 
 
 import numpy as np
-
 def batch_generator(data, batch_size, shuffle=True):
     """
     Generate batches of data.
@@ -89,17 +88,17 @@ def batch_generator(data, batch_size, shuffle=True):
     Yields:
         A list of array-like objects corresponding to a batch of data
     """
-    data_size = len(data[0])
-    indices = np.arange(data_size)
-    
-    while True:
-        if shuffle:
-            np.random.shuffle(indices)
+    if shuffle:
+        data = shuffle_aligned_list(data)
 
-        for start_idx in range(0, data_size, batch_size):
-            end_idx = min(start_idx + batch_size, data_size)
-            batch_indices = indices[start_idx:end_idx]
-            yield [d[batch_indices] for d in data]
+    batch_count = 0
+    while True:
+        start = batch_count * batch_size
+        end = start + batch_size
+        if end > len(data[0]):  # Check if end index exceeds data size
+            break  # Exit the loop to avoid smaller batches
+        batch_count += 1
+        yield [d[start:end] for d in data]
 
 
 def plot_embedding(X, y, d, title=None):
